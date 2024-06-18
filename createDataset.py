@@ -28,17 +28,19 @@ print("Shuffled indices have been loaded from the CSV file")
 # print(shuffled_indices)
 
 # Define the split point for 80% training, 20% testing
-split_index = int(total_files * 0.8)
-print(split_index)
-train_indices = file_indices[:split_index]
-test_indices = file_indices[split_index:]
+# split_index = int(total_files * 0.8)
+# print(split_index)
+# train_indices = file_indices[:split_index]
+# test_indices = file_indices[split_index:]
 # train_indices = range()
+train_size = 4158
+test_size = 945
 
 # Generate file paths for training and testing sets
-image_paths_train = [f'data/image_overlap/image_{i}.jpg' for i in train_indices]
-label_paths_train = [f'data/annotation_overlap_incipient/annotation_{i}.png' for i in train_indices]
-image_paths_validation = [f'data/image_overlap/image_{i}.jpg' for i in test_indices]
-label_paths_validation = [f'data/annotation_overlap_incipient/annotation_{i}.png' for i in test_indices]
+image_paths_train = [f'data/train_image_512/image_{i}.jpg' for i in range(train_size)]
+label_paths_train = [f'data/train_annotation_512/annotation_{i}.png' for i in range(train_size)]
+image_paths_validation = [f'data/test_image_512/image_{i}.jpg' for i in range(test_size)]
+label_paths_validation = [f'data/test_annotation_512/annotation_{i}.png' for i in range(test_size)]
 
 # image_paths_train_512 = [f'data/image_overlap/image_{i}.jpg' for i in range(int(5103*0.8))]
 # label_paths_train_512 = [f'data/annotation_overlap_incipient/annotation_{i}.png' for i in range(int(5103*0.8))]
@@ -81,73 +83,84 @@ dataset = DatasetDict({
      }
 )
 
+# def dataset_create(image_paths_train, label_paths_train, image_paths_validation, label_paths_validation):
+#     train_dataset = create_dataset(image_paths_train, label_paths_train)
+#     validation_dataset = create_dataset(image_paths_validation, label_paths_validation)
+#     dataset_new = DatasetDict({
+#         "train": train_dataset,
+#         "validation": validation_dataset,
+#         }
+#     )
+#     return dataset_new
+# dataset = dataset_create(image_paths_train, label_paths_train, image_paths_validation, label_paths_validation)
+
 from torch.utils.data import Dataset as BaseDataset
 
 # MyDataset for SegmentationModelTorch
-class MyDataset(BaseDataset):
-    """
-    Args:
-        images_dir (str): path to images folder
-        masks_dir (str): path to segmentation masks folder
-        class_values (list): values of classes to extract from segmentation mask
-        augmentation (albumentations.Compose): data transfromation pipeline 
-            (e.g. flip, scale, etc.)
-        preprocessing (albumentations.Compose): data preprocessing 
-            (e.g. noralization, shape manipulation, etc.)
+# class MyDataset(BaseDataset):
+#     """
+#     Args:
+#         images_dir (str): path to images folder
+#         masks_dir (str): path to segmentation masks folder
+#         class_values (list): values of classes to extract from segmentation mask
+#         augmentation (albumentations.Compose): data transfromation pipeline 
+#             (e.g. flip, scale, etc.)
+#         preprocessing (albumentations.Compose): data preprocessing 
+#             (e.g. noralization, shape manipulation, etc.)
     
-    """
+#     """
     
-    CLASSES = ['intactwall', 'tectonictrace', 'desiccation', 'faultgauge', 'breakout', 
-               'faultzone']
+#     CLASSES = ['intactwall', 'tectonictrace', 'desiccation', 'faultgauge', 'breakout', 
+#                'faultzone']
     
-    def __init__(
-            self, 
-            images_dir, 
-            masks_dir, 
-            classes=None, 
-            augmentation=None, 
-            preprocessing=None,
-    ):
-        self.ids = images_dir
-        # self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
-        # self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
-        self.images_fps = images_dir
-        self.masks_fps = masks_dir
-        # convert str names to class values on masks
-        # self.class_values = [self.CLASSES.index(cls.lower()) for cls in classes]
+#     def __init__(
+#             self, 
+#             images_dir, 
+#             masks_dir, 
+#             classes=None, 
+#             augmentation=None, 
+#             preprocessing=None,
+#     ):
+#         self.ids = images_dir
+#         # self.images_fps = [os.path.join(images_dir, image_id) for image_id in self.ids]
+#         # self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
+#         self.images_fps = images_dir
+#         self.masks_fps = masks_dir
+#         # convert str names to class values on masks
+#         # self.class_values = [self.CLASSES.index(cls.lower()) for cls in classes]
         
-        self.augmentation = augmentation
-        self.preprocessing = preprocessing
-        # print("I am at mydataset!")
-        # print("images_dir", images_dir[1])
+#         self.augmentation = augmentation
+#         self.preprocessing = preprocessing
+#         # print("I am at mydataset!")
+#         # print("images_dir", images_dir[1])
     
-    def __getitem__(self, i):
-        # print("i:",i)       
+#     def __getitem__(self, i):
+#         # print("i:",i)       
 
-        image = cv2.imread(self.images_fps[i])
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        mask = cv2.imread(self.masks_fps[i], 0)
-        # print("I am after cv2")
+#         image = cv2.imread(self.images_fps[i])
+#         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+#         mask = cv2.imread(self.masks_fps[i], 0)
+#         # print("I am after cv2")
         
-        # # extract certain classes from mask (e.g. cars)
-        # masks = [(mask == v) for v in self.class_values]
-        # mask = np.stack(masks, axis=-1).astype('float')
+#         # # extract certain classes from mask (e.g. cars)
+#         # masks = [(mask == v) for v in self.class_values]
+#         # mask = np.stack(masks, axis=-1).astype('float')
         
-        # apply augmentations
-        if self.augmentation:
-            sample = self.augmentation(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
+#         # apply augmentations
+#         if self.augmentation:
+#             sample = self.augmentation(image=image, mask=mask)
+#             image, mask = sample['image'], sample['mask']
         
-        # apply preprocessing
-        if self.preprocessing:
-            sample = self.preprocessing(image=image, mask=mask)
-            image, mask = sample['image'], sample['mask']
+#         # apply preprocessing
+#         if self.preprocessing:
+#             sample = self.preprocessing(image=image, mask=mask)
+#             image, mask = sample['image'], sample['mask']
             
-        return image, mask
-        # return dict(image=image, mask=mask)
+#         return image, mask
+#         # return dict(image=image, mask=mask)
 
-    def __len__(self):
-        return len(self.ids)
+#     def __len__(self):
+#         return len(self.ids)
 
 
 

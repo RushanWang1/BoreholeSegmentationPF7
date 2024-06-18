@@ -17,6 +17,10 @@ from transformers import Trainer
 from torch.utils.data import WeightedRandomSampler
 import segmentation_models_pytorch as smp
 
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+from PIL import Image
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
@@ -26,7 +30,8 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 # create 'id2label'
 # id2label = {0: 'intactwall', 1: 'breakout', 2: 'faultzone', 3: 'wetspot', 4: 'unclassifycracks', 5: 'tectonictrace', 6: 'desiccation', 7: 'faultgauge'}
-id2label = {0: 'intactwall', 1: 'tectonictrace', 2: 'desiccation',3: 'faultgauge', 4: 'incipientbreakout', 5: 'faultzone',6: 'fullybreakout'}
+# id2label = {0: 'intactwall', 1: 'tectonictrace', 2: 'desiccation',3: 'faultgauge', 4: 'incipientbreakout', 5: 'faultzone',6: 'fullybreakout'}
+id2label = {0: 'intactwall', 1: 'tectonictrace', 2: 'desiccation',3: 'faultgauge', 4: 'breakout', 5: 'faultzone',}
 label2id = {v: k for k, v in id2label.items()}
 num_labels = len(id2label)
 
@@ -41,30 +46,72 @@ random_rotation = RandomRotation(degrees=30)
 random_horizontal_flip = RandomHorizontalFlip()
 random_crop = RandomCrop((512,512))
 
-augmentation_pipeline = Compose([
-    # jitter,
-    random_crop,
-    random_rotation,
-    random_horizontal_flip
+# augmentation_pipeline = Compose([
+#     # jitter,
+#     random_crop,
+#     random_rotation,
+#     random_horizontal_flip
+# ])
+
+# Define augmentation pipeline
+augmentation_pipeline = A.Compose([
+    A.HorizontalFlip(p=0.5),
+    A.VerticalFlip(p=0.5),
+    A.Rotate(limit=30, p=0.5),
+    A.RandomCrop(width=512, height=512, p=1.0),
+    A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, p=0.5)
 ])
 
-def train_transforms(example_batch):
-    images_1 = [augmentation_pipeline(x) for x in example_batch['pixel_values']]
-    labels_1 = [augmentation_pipeline(x) for x in example_batch['label']]
-    images = [jitter(x) for x in images_1]
-    labels = [x for x in labels_1]
-    # images = [jitter(x) for x in example_batch['pixel_values']]
-    # labels = [x for x in example_batch['label']]
-    # labels = np.where(labels == 5, 1, 0)
-    inputs = processor(images, labels)
-    return inputs
+def process_image(image):
+    if isinstance(image, Image.Image):
+        return np.array(image)
+    return image
 
+# Processor function for transforming and preparing inputs
+def processor_transform(images, labels):
+    encodings = processor(images=images, segmentation_maps=labels, return_tensors="pt")
+    return encodings
+
+def train_transforms(example_batch):
+    augmented_images = []
+    augmented_labels = []
+    
+    for image, label in zip(example_batch['pixel_values'], example_batch['label']):
+        # Convert PIL images to numpy arrays
+        image = process_image(image)
+        label = process_image(label)
+        
+        # Apply the augmentation
+        augmented = augmentation_pipeline(image=image, mask=label)
+        augmented_images.append(augmented['image'])
+        augmented_labels.append(augmented['mask'])
+    
+    inputs = processor_transform(augmented_images, augmented_labels)
+    return inputs
 
 def val_transforms(example_batch):
-    images = [x for x in example_batch['pixel_values']]
-    labels = [x for x in example_batch['label']]
-    inputs = processor(images, labels)
+    images = [process_image(image) for image in example_batch['pixel_values']]
+    labels = [process_image(label) for label in example_batch['label']]
+    inputs = processor_transform(images, labels)
     return inputs
+
+# def train_transforms(example_batch):
+#     images_1 = [augmentation_pipeline(x) for x in example_batch['pixel_values']]
+#     labels_1 = [augmentation_pipeline(x) for x in example_batch['label']]
+#     images = [jitter(x) for x in images_1]
+#     labels = [x for x in labels_1]
+#     # images = [jitter(x) for x in example_batch['pixel_values']]
+#     # labels = [x for x in example_batch['label']]
+#     # labels = np.where(labels == 5, 1, 0)
+#     inputs = processor(images, labels)
+#     return inputs
+
+
+# def val_transforms(example_batch):
+#     images = [x for x in example_batch['pixel_values']]
+#     labels = [x for x in example_batch['label']]
+#     inputs = processor(images, labels)
+#     return inputs
 
 
 # Set transforms
@@ -115,10 +162,10 @@ sampler = WeightedRandomSampler(
 # torch.cuda.set_device(0)
 epochs = 50
 lr = 0.00006
-batch_size = 18
+batch_size = 20
 
 training_args = TrainingArguments(
-    "Segformer-refined-ep50-batch12-multiscale-v2",
+    "Segformer-ep50-batch12-augment-splitarea-512",
     learning_rate=lr,
     dataloader_num_workers= 4,
     num_train_epochs=epochs,
@@ -130,7 +177,7 @@ training_args = TrainingArguments(
     save_strategy="steps",
     save_steps=20,
     eval_steps=20,
-    logging_dir = 'Segformer-refined-ep50-batch12-multiscale-v2-log',
+    logging_dir = 'Segformer-ep50-batch12-augment-splitarea-512-log',
     logging_steps=1,
     eval_accumulation_steps=5,
     load_best_model_at_end=True,
@@ -145,7 +192,7 @@ from transformers import default_data_collator
 train_dataloader = DataLoader(
     train_ds,  # Your training dataset
     batch_size=training_args.per_device_train_batch_size,
-    # sampler=sampler,
+    sampler=sampler,
     collate_fn=default_data_collator,
     num_workers=training_args.dataloader_num_workers,
     pin_memory=training_args.dataloader_pin_memory
@@ -160,7 +207,7 @@ class CustomTrainer(Trainer):
         outputs = model(**inputs)
         logits = outputs.get('logits')
         # compute custom loss
-        loss_fct = nn.CrossEntropyLoss()# weight=sample_weights
+        loss_fct = nn.CrossEntropyLoss(weight=sample_weights)# 
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 

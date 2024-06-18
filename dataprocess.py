@@ -100,31 +100,31 @@ y = 0
 #             n+=1
 width = 512
 height = 512
-# with rasterio.open("data/refined/train_croppedimage.tif") as img:
-#     # print(img.shape)  
-#     image_width = img.width
-#     image_height = img.height
-#     row_num = int(image_height/(height/2))
-#     col_num = int(image_width/(width/2))
-#     for y in range(row_num):
-#         for x in range (col_num):
-#             if x <(col_num-1):
-#                 col = x*(width/2)                
-#             elif x==(col_num-1):
-#                 col = img.width - width                 
-#             if y<(row_num-1):
-#                 row = y*(height/2)
-#             elif y==(row_num-1):
-#                 row = img.height - height
-#             currentwindow = Window(col,row,width,height)
-#             data_gt = img.read(window = currentwindow)
-#             print(int(col),int(row))
-#             # radius = rescale_radius[0,int(row):int(row)+512, int(col):int(col)+512]
-#             # image.imsave(f'FineTune/data/image/image_{n}.png', data_gt[0])
-#             image.imsave(f'data/train_image_512/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
-#             n+=1
+with rasterio.open("data/refined/test_croppedimage.tif") as img:
+    # print(img.shape)  
+    image_width = img.width
+    image_height = img.height
+    row_num = int(image_height/(height/2))
+    col_num = int(image_width/(width/2))
+    for y in range(row_num):
+        for x in range (col_num):
+            if x <(col_num-1):
+                col = x*(width/2)                
+            elif x==(col_num-1):
+                col = img.width - width                 
+            if y<(row_num-1):
+                row = y*(height/2)
+            elif y==(row_num-1):
+                row = img.height - height
+            currentwindow = Window(col,row,width,height)
+            data_gt = img.read(window = currentwindow)
+            print(int(col),int(row))
+            # radius = rescale_radius[0,int(row):int(row)+512, int(col):int(col)+512]
+            # image.imsave(f'FineTune/data/image/image_{n}.png', data_gt[0])
+            image.imsave(f'data/test_image_512/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
+            n+=1
 n = 0
-with rasterio.open("data/refined/train_alllabel.tif") as img:
+with rasterio.open("data/refined/test_alllabel.tif") as img:
     # print(img.shape)  
     image_width = img.width
     image_height = img.height
@@ -143,7 +143,7 @@ with rasterio.open("data/refined/train_alllabel.tif") as img:
             window = Window(col,row,width,height)
             data_gt = img.read(window = window)
             array = Image.fromarray(data_gt[0].astype(np.uint8),'L')
-            array.save(f'data/train_annotation_512/annotation_{n}.png')
+            array.save(f'data/test_annotation_512/annotation_{n}.png')
             # np.savetxt(f'FineTune/data/annotation/annotation_{n}.csv', data_gt[0],delimiter=",")
             # image.imsave(f'FineTune/data/annotation/annotation_{n}.tif', data_gt[0])
             n+=1 
