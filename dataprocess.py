@@ -40,8 +40,8 @@ from PIL import Image
 #     dst.write(allLabel[0].astype(rasterio.uint8), 1)
 
 # Cropping both image and label into 1024x1024 size, creating dataset
-height = 512
-width = 512
+# height = 512
+# width = 512
 col = 0
 row = 0
 n=0
@@ -98,8 +98,8 @@ y = 0
 #             # image.imsave(f'FineTune/data/image/image_{n}.png', data_gt[0])
 #             image.imsave(f'data/temporal_compare_data/230816_image_1024_overlap_20/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
 #             n+=1
-width = 512
-height = 512
+width = 1024
+height = 1024
 with rasterio.open("data/refined/test_croppedimage.tif") as img:
     # print(img.shape)  
     image_width = img.width
@@ -121,7 +121,7 @@ with rasterio.open("data/refined/test_croppedimage.tif") as img:
             print(int(col),int(row))
             # radius = rescale_radius[0,int(row):int(row)+512, int(col):int(col)+512]
             # image.imsave(f'FineTune/data/image/image_{n}.png', data_gt[0])
-            image.imsave(f'data/test_image_512/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
+            image.imsave(f'data/test_image_{width}/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
             n+=1
 n = 0
 with rasterio.open("data/refined/test_alllabel.tif") as img:
@@ -143,7 +143,7 @@ with rasterio.open("data/refined/test_alllabel.tif") as img:
             window = Window(col,row,width,height)
             data_gt = img.read(window = window)
             array = Image.fromarray(data_gt[0].astype(np.uint8),'L')
-            array.save(f'data/test_annotation_512/annotation_{n}.png')
+            array.save(f'data/test_annotation_{width}/annotation_{n}.png')
             # np.savetxt(f'FineTune/data/annotation/annotation_{n}.csv', data_gt[0],delimiter=",")
             # image.imsave(f'FineTune/data/annotation/annotation_{n}.tif', data_gt[0])
             n+=1 

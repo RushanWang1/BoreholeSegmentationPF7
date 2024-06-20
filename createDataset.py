@@ -17,14 +17,14 @@ total_files = 5103
 #     writer = csv.writer(file)
 #     for index in file_indices:
 #         writer.writerow([index])
-file_indices = []
-with open("file_indices.csv", mode='r', newline='') as file:
-    reader = csv.reader(file)
-    for row in reader:
-        if row:  # making sure the row is not empty
-            file_indices.append(int(row[0]))  # Convert string back to integer
+# file_indices = []
+# with open("file_indices.csv", mode='r', newline='') as file:
+#     reader = csv.reader(file)
+#     for row in reader:
+#         if row:  # making sure the row is not empty
+#             file_indices.append(int(row[0]))  # Convert string back to integer
 
-print("Shuffled indices have been loaded from the CSV file")
+# print("Shuffled indices have been loaded from the CSV file")
 # print(shuffled_indices)
 
 # Define the split point for 80% training, 20% testing
@@ -33,14 +33,15 @@ print("Shuffled indices have been loaded from the CSV file")
 # train_indices = file_indices[:split_index]
 # test_indices = file_indices[split_index:]
 # train_indices = range()
-train_size = 4158
-test_size = 945
+train_size = 1034
+test_size = 188
+image_size = 1024
 
 # Generate file paths for training and testing sets
-image_paths_train = [f'data/train_image_512/image_{i}.jpg' for i in range(train_size)]
-label_paths_train = [f'data/train_annotation_512/annotation_{i}.png' for i in range(train_size)]
-image_paths_validation = [f'data/test_image_512/image_{i}.jpg' for i in range(test_size)]
-label_paths_validation = [f'data/test_annotation_512/annotation_{i}.png' for i in range(test_size)]
+image_paths_train = [f'data/train_image_{image_size}/image_{i}.jpg' for i in range(train_size)]
+label_paths_train = [f'data/train_annotation_{image_size}/annotation_{i}.png' for i in range(train_size)]
+image_paths_validation = [f'data/test_image_{image_size}/image_{i}.jpg' for i in range(test_size)]
+label_paths_validation = [f'data/test_annotation_{image_size}/annotation_{i}.png' for i in range(test_size)]
 
 # image_paths_train_512 = [f'data/image_overlap/image_{i}.jpg' for i in range(int(5103*0.8))]
 # label_paths_train_512 = [f'data/annotation_overlap_incipient/annotation_{i}.png' for i in range(int(5103*0.8))]

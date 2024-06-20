@@ -41,25 +41,19 @@ test_ds = dataset["validation"]
 
 # Image processor and augmentation
 processor = SegformerImageProcessor(do_rescale= True)
-jitter = ColorJitter(brightness=0.25, contrast=0.25, saturation=0.25, hue=0.1) 
-random_rotation = RandomRotation(degrees=30)
-random_horizontal_flip = RandomHorizontalFlip()
-random_crop = RandomCrop((512,512))
-
-# augmentation_pipeline = Compose([
-#     # jitter,
-#     random_crop,
-#     random_rotation,
-#     random_horizontal_flip
-# ])
+# jitter = ColorJitter(brightness=0.25, contrast=0.25, saturation=0.25, hue=0.1) 
 
 # Define augmentation pipeline
 augmentation_pipeline = A.Compose([
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
     A.Rotate(limit=30, p=0.5),
-    A.RandomCrop(width=512, height=512, p=1.0),
-    A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, p=0.5)
+    A.RandomCrop(width=512, height=512, p=0.5),
+    A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, p=0.5),
+    A.GaussianBlur(blur_limit=(3, 7), p=0.1),
+    A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.2),
+    # A.GridDistortion(p=0.5),
+    # A.CLAHE(p=0.5)
 ])
 
 def process_image(image):
@@ -155,17 +149,17 @@ sample_weights = torch.tensor(weights)
 
 sampler = WeightedRandomSampler(
     weights=sample_weights,
-    num_samples=4082,
+    num_samples=len(train_ds),
     replacement=True
 )
 
 # torch.cuda.set_device(0)
-epochs = 50
+epochs = 600
 lr = 0.00006
-batch_size = 20
+batch_size = 24
 
 training_args = TrainingArguments(
-    "Segformer-ep50-batch12-augment-splitarea-512",
+    "Segformer-ep600-batch20-augmentall-splitarea-1024",
     learning_rate=lr,
     dataloader_num_workers= 4,
     num_train_epochs=epochs,
@@ -177,7 +171,7 @@ training_args = TrainingArguments(
     save_strategy="steps",
     save_steps=20,
     eval_steps=20,
-    logging_dir = 'Segformer-ep50-batch12-augment-splitarea-512-log',
+    logging_dir = 'Segformer-ep600-batch20-augmentall-splitarea-1024-log',
     logging_steps=1,
     eval_accumulation_steps=5,
     load_best_model_at_end=True,
