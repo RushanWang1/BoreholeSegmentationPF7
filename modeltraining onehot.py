@@ -3,7 +3,6 @@ import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import numpy as np
-
 from transformers import SegformerForSemanticSegmentation
 from transformers import TrainerCallback, TrainingArguments
 from createDataset import dataset
@@ -21,8 +20,6 @@ from torch.utils.tensorboard import SummaryWriter
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from PIL import Image
-
-from FocalLoss import FocalLoss
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
@@ -54,10 +51,10 @@ one_hot_map = {
 # load dataset
 train_ds = dataset["train"]
 test_ds = dataset["validation"]
+# train_ds, test_ds = train_ds_all.train_test_split(test_size=0.1, seed=42)
 
 # Image processor and augmentation
-processor = SegformerImageProcessor(do_rescale= True, do_reduce_labels = False)
-# jitter = ColorJitter(brightness=0.25, contrast=0.25, saturation=0.25, hue=0.1) 
+processor = SegformerImageProcessor(do_rescale= True)
 
 # Define augmentation pipeline
 augmentation_pipeline = A.Compose([
@@ -69,7 +66,7 @@ augmentation_pipeline = A.Compose([
     # A.GaussianBlur(blur_limit=(3, 7), p=0.1),
     # A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.2),
     # A.GridDistortion(p=0.5),
-    # A.CLAHE(p=0.3)
+    A.CLAHE(p=0.2)
 ])
 
 def process_image(image):
@@ -85,8 +82,12 @@ def one_hot_encode(label, one_hot_map):
     return one_hot
 
 # Processor function for transforming and preparing inputs
+# def processor_transform(images, labels):
+#     encodings = processor(images=images, segmentation_maps=labels, return_tensors="pt")
+#     return encodings
+
 def processor_transform(images, labels):
-    encodings = processor(images=images, segmentation_maps=labels, return_tensors="pt")
+    encodings = processor(images=images, return_tensors="pt")
     return encodings
 
 # def processor_transform(images, labels):
@@ -109,6 +110,9 @@ def train_transforms(example_batch):
         augmented_labels.append(augmented['mask'])
     
     inputs = processor_transform(augmented_images, augmented_labels)
+    label_array = np.array(augmented_labels)
+    label_tensor = torch.from_numpy(label_array)
+    inputs['original_labels'] = label_tensor.type(torch.LongTensor)
     return inputs
 
 def val_transforms(example_batch):
@@ -117,38 +121,44 @@ def val_transforms(example_batch):
     inputs = processor_transform(images, labels)
     return inputs
 
-# def train_transforms(example_batch):
-#     images_1 = [augmentation_pipeline(x) for x in example_batch['pixel_values']]
-#     labels_1 = [augmentation_pipeline(x) for x in example_batch['label']]
-#     images = [jitter(x) for x in images_1]
-#     labels = [x for x in labels_1]
-#     # images = [jitter(x) for x in example_batch['pixel_values']]
-#     # labels = [x for x in example_batch['label']]
-#     # labels = np.where(labels == 5, 1, 0)
-#     inputs = processor(images, labels)
-#     return inputs
+# Custom Dataset Class
+# class CustomDataset(torch.utils.data.Dataset):
+#     def __init__(self, dataset, transform=None):
+#         self.dataset = dataset
+#         self.transform = transform
 
+#     def __len__(self):
+#         return len(self.dataset)
 
-# def val_transforms(example_batch):
-#     images = [x for x in example_batch['pixel_values']]
-#     labels = [x for x in example_batch['label']]
-#     inputs = processor(images, labels)
-#     return inputs
+#     def __getitem__(self, idx):
+#         image, label = self.dataset[idx]['pixel_values'], self.dataset[idx]['label']
+#         image = process_image(image)
+#         label = process_image(label)
+        
+#         if self.transform:
+#             augmented = self.transform(image=image, mask=label)
+#             image = augmented['image']
+#             label = augmented['mask']
+        
+#         label_one_hot = one_hot_encode(label, one_hot_map)
+#         encodings = processor(images=[image], segmentation_maps=[label_one_hot], return_tensors="pt")
+        
+#         return {key: encodings[key][0] for key in encodings}
 
+# # Initialize CustomDataset
+# train_ds = CustomDataset(dataset["train"], transform=augmentation_pipeline)
+# test_ds = CustomDataset(dataset["validation"], transform=None)
 
 # Set transforms
 train_ds.set_transform(train_transforms)
 test_ds.set_transform(val_transforms)
 
-train_ds = train_ds.shuffle(seed=42)
-test_ds = test_ds.shuffle(seed=42)
 
 # check availablity of train and test dataset
 print(train_ds, test_ds)
 
 # Fine-tune a SegFormer model
-pretrained_model_name = "nvidia/mit-b0" 
-# pretrained_model_name = "/home/wangrush/code/FineTune/Segformer-ep800-batch20-augmentall-splitarea-multiscale/checkpoint-99400"
+pretrained_model_name = "nvidia/mit-b0"   # pretrained_model_name = "/home/wangrush/code/FineTune/Segformer-ep800-batch20-augmentall-splitarea-multiscale/checkpoint-99400"
 model = SegformerForSemanticSegmentation.from_pretrained(
     pretrained_model_name,
     # local_files_only=True,
@@ -156,32 +166,43 @@ model = SegformerForSemanticSegmentation.from_pretrained(
     label2id=label2id
 )
 
-
 model = model.to(device)
+
+# from transformers import SegformerForSemanticSegmentation, SegformerConfig
+
+# class CustomSegformer(SegformerForSemanticSegmentation):
+#     def __init__(self, config):
+#         super().__init__(config)
+#         # Change the classifier to output 6 channels instead of 8
+#         self.decode_head.classifier = nn.Conv2d(config.hidden_sizes[-1], 6, kernel_size=(1, 1))
+
+# # Load the pretrained configuration
+# config = SegformerConfig.from_pretrained(pretrained_model_name, num_labels=8)
+# # Modify the configuration to have 6 output channels
+# config.num_labels = 6
+
+# # Instantiate the custom model with the modified configuration
+# model = CustomSegformer(config)
+# model = model.to(device)
+
 #  set up trainer
 # weighted random sampler
-# class_counts = torch.tensor([238765416, 849106, 2401392, 212117, 76447632, 24784013], dtype=torch.float)
-
-weights = [1.4,404.5,143.1,1619.2,4.5,13.8] # for 6class, without faultzone breakout and cracks
-# weights = [1,404,143,1774,4,18,61,1609] # for 8class, with faultzone breakout and cracks
+# weights = [1.4,404.5,143.1,1619.2,4.5,13.8] # for 6class, without faultzone breakout and cracks
+# # weights = [1,404,143,1774,4,18,61,1609] # for 8class, with faultzone breakout and cracks
 # sample_weights = torch.tensor(weights)
+class_counts = torch.tensor([238765416, 849106, 2401392, 212117, 76447632, 24784013], dtype=torch.float)
+
+# Calculate pos_weight for BCEWithLogitsLoss
+total_pixels = class_counts.sum().item()
+pos_weight = (total_pixels - class_counts) / class_counts
+# pos_weight = total_pixels/class_counts
+print("Pos Weight:", pos_weight)
+
 sample_weights = torch.zeros(len(train_ds))
-sum_weights = sum(weights)
-alpha = [w / sum_weights for w in weights]
-# for idx, (pixel_values, label) in enumerate(train_ds):
-#     class_weight = weights[label]
-#     sample_weights[idx] = class_weight
-
-####    Sampler Implementation Here!
 # for i in range(len(train_ds)):
-#     mask = train_ds[i]['labels']
-#     for j in range(6):
-#         if mask[j].sum() > 0:
-#             sample_weights[i] += weights[j]
+#     sample_weights[i] = sum([pos_weight[j] for j in range(6) if train_ds[i][1][j].sum() > 0])
 
-# epsilon = 1e-6
-# sample_weights = sample_weights + epsilon
-
+# # Normalize sample weights
 # sample_weights = sample_weights / sample_weights.sum()
 
 # sampler = WeightedRandomSampler(
@@ -190,29 +211,28 @@ alpha = [w / sum_weights for w in weights]
 #     replacement=True
 # )
 
-
 # torch.cuda.set_device(0)
-epochs = 500
+epochs = 100
 lr = 0.0001
-batch_size = 24
+batch_size = 12
 
 training_args = TrainingArguments(
-    "Segformer-nowrs-ep500-batch24-augment-splitarea-multiscale", 
+    "Segformer-mytrainer-onehot-bcelossweight-ep100-batch12-lr0001-augment-splitarea-512", 
     learning_rate=lr,
     dataloader_num_workers= 4,
     num_train_epochs=epochs,
     per_device_train_batch_size=batch_size,
-    per_device_eval_batch_size=batch_size,
+    # per_device_eval_batch_size=batch_size,
     fp16=True,
     save_total_limit=3,
-    evaluation_strategy="steps",
+    # evaluation_strategy="steps",
     save_strategy="steps",
     save_steps=20,
-    eval_steps=20,
-    logging_dir = 'Segformer-nowrs-ep500-batch24-augment-splitarea-multiscale-log',
+    # eval_steps=20,
+    logging_dir = 'Segformer-mytrainer-onehot-bcelossweight-ep100-batch12-lr0001-augment-splitarea-512-log',
     logging_steps=1,
-    eval_accumulation_steps=5,
-    load_best_model_at_end=True,
+    # eval_accumulation_steps=5,
+    # load_best_model_at_end=True,
     push_to_hub=False,
     dataloader_pin_memory = True,
     use_cpu= False,    
@@ -229,28 +249,59 @@ train_dataloader = DataLoader(
     num_workers=training_args.dataloader_num_workers,
     pin_memory=training_args.dataloader_pin_memory
 )
+
+# weight_loss = torch.tensor([0.01,0.18,0.06,0.74,0.01,0.01])
+# weight_loss = weight_loss.view(1,6,1,1).to(device)
+# weight_pos = torch.tensor([0.44,403,142,1618,3.5,12.9])
+# pos_weights = weight_pos.view(6, 1, 1)
+
 class CustomTrainer(Trainer):
-    # def get_train_dataloader(self):
-    #     return train_dataloader  # Use the custom DataLoader created above
+    def get_train_dataloader(self):
+        return train_dataloader  # Use the custom DataLoader created above
     
     def compute_loss(self, model, inputs, return_outputs=False):
-        labels = inputs.get("labels").to(device)
+        labels = inputs.get("original_labels").to(device)
+        labels_one_hot = [one_hot_encode(label.detach().cpu().numpy(), one_hot_map) for label in labels]
+        labels_one_hot_arr=np.array(labels_one_hot)
         # forward pass
-        outputs = model(**inputs)
+        input_onlyimage = {}
+        input_onlyimage['pixel_values'] = inputs['pixel_values']
+        outputs = model(**input_onlyimage)
         logits = outputs.get('logits')
-        # compute custom loss
-        # loss_fct = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
-        loss_fct = nn.CrossEntropyLoss(weight=torch.tensor(weights)).to(device) # for integer label
-        # loss_fct = FocalLoss(alpha=torch.tensor(alpha).to(device), gamma=2, reduction='sum').to(device)  
+        # compute custom loss // pos_weight=torch.FloatTensor(weights) pos_weight=pos_weight.to(device)
+        loss_fct = nn.BCEWithLogitsLoss(reduction='none').to(device)
+        # loss_fct = nn.L1Loss().to(device)
+        # loss_fct = nn.CrossEntropyLoss(weight=sample_weights).to(device) # for integer label
         logits_tensor = nn.functional.interpolate(
             logits,
             size=labels.shape[-2:],
             mode="bilinear",
             align_corners=False,
             )
-        labels = labels.float()
-        loss = loss_fct(logits_tensor, labels.long())
-        # loss = loss_fct(logits_tensor.reshape(-1, self.model.config.num_labels), labels.view(-1).long()) # for integer label
+        # probability = nn.functional.softmax(logits_tensor, dim = 1)
+        # labels = labels.float()
+        gt = torch.from_numpy(labels_one_hot_arr).to(device)
+        loss_perclass = pos_weight.to(device)
+        loss_all = loss_fct(logits_tensor, gt.float()).to(device)
+        loss_perclass[0] = loss_all[:,0].mean()
+        loss_perclass[1] = loss_all[:,1].mean()
+        loss_perclass[2] = loss_all[:,2].mean()
+        loss_perclass[3] = loss_all[:,3].mean()
+        loss_perclass[4] = loss_all[:,4].mean()
+        loss_perclass[5] = loss_all[:,5].mean()
+
+        # loss_perclass[1] = loss_fct(logits_tensor[:,1], gt[:,1].float()).to(device)
+        # loss_perclass[2] = loss_fct(logits_tensor[:,2], gt[:,2].float()).to(device)
+        # loss_perclass[3] = loss_fct(logits_tensor[:,3], gt[:,3].float()).to(device)
+        # loss_perclass[4] = loss_fct(logits_tensor[:,4], gt[:,4].float()).to(device)
+        # loss_perclass[5] = loss_fct(logits_tensor[:,5], gt[:,5].float()).to(device)
+        # loss = torch.matmul(loss_perclass, pos_weight.to(device))
+        # loss = torch.sum(loss_perclass)
+        # loss = loss_fct(logits_tensor, gt.float()).to(device)
+        loss = (loss_perclass * pos_weight.to(device)).mean()
+        # loss_weighted = loss*weight_loss
+        # loss_weighted = loss_weighted.mean()
+        # loss = loss_fct(logits_tensor.reshape(-1, self.model.config.num_labels), labels.view(-1)) # for integer label
         return (loss, outputs) if return_outputs else loss
 
 
@@ -277,21 +328,21 @@ def compute_metrics(eval_pred):
     logits, labels = eval_pred
     logits_tensor = torch.from_numpy(logits)
     # scale the logits to the size of the label
-    logits_tensor = nn.functional.interpolate(
-        logits_tensor,
-        size=labels.shape[-2:],
-        mode="bilinear",
-        align_corners=False,
-    ).argmax(dim=1)
-    
     # logits_tensor = nn.functional.interpolate(
-    #         logits_tensor,
-    #         size=labels.shape[-2:],
-    #         mode="bilinear",
-    #         align_corners=False,
-    # ).sigmoid().round()
+    #     logits_tensor,
+    #     size=labels.shape[-2:],
+    #     mode="bilinear",
+    #     align_corners=False,
+    # ).argmax(dim=1)
+    
+    logits_tensor = nn.functional.interpolate(
+            logits_tensor,
+            size=labels.shape[-2:],
+            mode="bilinear",
+            align_corners=False,
+    ).sigmoid().round()
         
-    # pred_labels = decode_predictions(logits_tensor.cpu().numpy())
+    pred_labels = decode_predictions(logits_tensor.cpu().numpy())
 
     pred_labels = logits_tensor# .detach().cpu().numpy()
     # currently using _compute instead of compute
@@ -342,7 +393,7 @@ class LogLossCallback(TrainerCallback):
             self.writer.add_scalar("Validation Loss", val_loss, epoch)
             
 # print(dir(train_ds))
-writer = SummaryWriter(log_dir='Segformer-nowrs-ep500-batch24-augment-splitarea-multiscale-v2-evallog')
+writer = SummaryWriter(log_dir='Segformer-mytrainer-oh-bcelossweight-ep100-batch24-augment-splitarea-512-log')
 # Trainer => CustomTrainer
 trainer = CustomTrainer(
     model=model,
