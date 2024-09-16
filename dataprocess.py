@@ -7,60 +7,66 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 # read breakout and faultzone label
-# with rasterio.open("data/refined/faultbreakout.tif") as img1:
+# with rasterio.open("data/temporal_compare_data/201113_label/breakout_faultzone.tif") as img1:
 #     # print(img1.shape)
 #     # window = Window(0,0,4000,4000)
 #     data_breakout = img1.read()
 #     # data_breakout[data_breakout == 0] = 99
 #     # data_breakout[data_breakout == 1] = 4
 #     # data_breakout[data_breakout == 2] = 5
-#     data_breakout[data_breakout == 8] = 6
+#     data_breakout[data_breakout == 1] = 4
+#     data_breakout[data_breakout == 2] = 5
 #     values1 = np.unique(data_breakout)
 #     print(values1)
 #     # show(data)
 
-# with rasterio.open("data/refined/faultdesiccation.tif") as img1:
-#     # print(img1.shape)
-#     # window = Window(0,0,4000,4000)
-#     data_cracks = img1.read()
-#     # data_cracks[data_cracks == 0] = 99
-#     # data_breakout[data_breakout == 1] = 4
-#     # data_breakout[data_breakout == 2] = 5
-#     # data_breakout[data_breakout == 4] = 6
-#     values1 = np.unique(data_cracks)
-#     print(values1)
+with rasterio.open("data/temporal_compare_data/201113_label/201113_label.tif") as img3:
+    # print(img1.shape)
+    # window = Window(0,0,4000,4000)
+    allLabel = img3.read()
+    # data_cracks[data_cracks == 0] = 99
+    # data_breakout[data_breakout == 1] = 4
+    # data_breakout[data_breakout == 2] = 5
+    # data_breakout[data_breakout == 4] = 6
+    values1 = np.unique(allLabel)
+    print(values1)
 
-# # read cracks label  
-# with rasterio.open("data/refined/alllabel.tif") as img2:
-#     # print(img2.shape)
-#     # window = Window(0,0,4000,4000)
-#     profile = img2.profile
-#     data_all = img2.read()
-#     # data_cracks[data_cracks == 0] = 99
-#     values2 = np.unique(data_all)
-#     print(values2)
+# read cracks label  
+with rasterio.open("data/temporal_compare_data/201113_label/tectonic_desiccate.tif") as img2:
+    # print(img2.shape)
+    # window = Window(0,0,4000,4000)
+    profile = img2.profile
+    data_cracks = img2.read()
+    # data_cracks[data_cracks == 3] = 99
+    values2 = np.unique(data_cracks)
+    print(values2)
 
 
 # merge label to get the overall groundtruth
 # allfaultzone = np.maximum(data_breakout,data_cracks)
-# allLabel = np.maximum(allfaultzone, data_all)
-# # allLabel[allLabel==99]=0
-# print(allLabel[0].shape)
-# print(np.unique(allLabel))
-# # show(allLabel, cmap='Pastel1')
-# with rasterio.open('data/refined/alllabel_faultzone.tif', 'w', **profile) as dst:
-#     dst.write(allLabel[0].astype(rasterio.uint8), 1)
+# allLabel_crack = np.maximum(data_cracks, data_faultgouge)
+allLabel[data_cracks == 1] = 1
+allLabel[data_cracks == 2] = 2
+# allLabel = np.maximum(allLabel_crack, data_breakout)
+# allLabel[allLabel==99]=0
+print(allLabel[0].shape)
+print(np.unique(allLabel))
+# show(allLabel, cmap='Pastel1')
+with rasterio.open('data/temporal_compare_data/201113_label/new_label.tif', 'w', **profile) as dst:
+    dst.write(allLabel[0].astype(rasterio.uint8), 1)
+
+print("Finish writing new label!")
 
 # Cropping both image and label into 1024x1024 size, creating dataset
-# height = 512
-# width = 512
+height = 512
+width = 512
 col = 0
 row = 0
 n=0
 x = 0
 y = 0
-# Over lap croping, 512*512 image size, interval 256
-# with rasterio.open("data/refined/alllabel_incipient.tif") as img:
+# # Over lap croping, 512*512 image size, interval 256
+# with rasterio.open("data/refined/alllabel_210202_new.tif") as img:
 #     # print(img.shape)  
 #     for y in range(27):
 #         for x in range (189):
@@ -140,11 +146,15 @@ height = 512
 #             image.imsave(f'data/train_image_{width}/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
 #             n+=1
 # n = 0
-# with rasterio.open("data/refined/test_alllabel_faultzone.tif") as img:
-#     # print(img.shape)  
-#     # img = img.read()
+
+# with rasterio.open("data/refined/test_alllabel_210202_new.tif") as img:
+#     # print(img.shape)
 #     image_width = img.width
-#     image_height = img.height
+#     image_height = img.height  
+#     # window_test = Window(0,0,image_width, int(image_height*0.2))
+#     # window_train = Window(0,int(image_height*0.2),image_width, image_height - int(image_height*0.2))
+#     # img = img.read(window  = window_train)
+    
 #     row_num = int(image_height/(height/2))
 #     col_num = int(image_width/(width/2))
 #     for y in range(row_num):
@@ -160,7 +170,7 @@ height = 512
 #             window = Window(col,row,width,height)
 #             data_gt = img.read(window = window)
 #             array = Image.fromarray(data_gt[0].astype(np.uint8),'L')
-#             array.save(f'data/test_annotation_faultzone_{width}/annotation_{n}.png')
+#             array.save(f'data/test_annotation_new_{width}/annotation_{n}.png')
 #             # np.savetxt(f'FineTune/data/annotation/annotation_{n}.csv', data_gt[0],delimiter=",")
 #             # image.imsave(f'FineTune/data/annotation/annotation_{n}.tif', data_gt[0])
 #             n+=1 
@@ -168,39 +178,39 @@ height = 512
 
 # Create one hot encoding from the label with extra class in fault 
 # Define the one-hot encoding for each class
-one_hot_map = {
-    0: [1, 0, 0, 0, 0, 0],
-    1: [0, 1, 0, 0, 0, 0],
-    2: [0, 0, 1, 0, 0, 0],
-    3: [0, 0, 0, 1, 0, 0],
-    4: [0, 0, 0, 0, 1, 0],
-    5: [0, 0, 0, 0, 0, 1],
-    6: [0, 0, 0, 0, 1, 1],
-    7: [0, 0, 1, 0, 0, 1],
-}
+# one_hot_map = {
+#     0: [1, 0, 0, 0, 0, 0],
+#     1: [0, 1, 0, 0, 0, 0],
+#     2: [0, 0, 1, 0, 0, 0],
+#     3: [0, 0, 0, 1, 0, 0],
+#     4: [0, 0, 0, 0, 1, 0],
+#     5: [0, 0, 0, 0, 0, 1],
+#     6: [0, 0, 0, 0, 1, 1],
+#     7: [0, 0, 1, 0, 0, 1],
+# }
 
-# Load the TIFF file
-tiff_path = 'data/refined/alllabel_faultzone.tif'
-image = Image.open(tiff_path)
-label_array = np.array(image)
+# # Load the TIFF file
+# tiff_path = 'data/refined/alllabel_faultzone.tif'
+# image = Image.open(tiff_path)
+# label_array = np.array(image)
 
-# Get the dimensions of the image
-height, width = label_array.shape
+# # Get the dimensions of the image
+# height, width = label_array.shape
 
-# Initialize the one-hot encoded array
-one_hot_encoded = np.zeros((height, width, 6), dtype=np.uint8)
+# # Initialize the one-hot encoded array
+# one_hot_encoded = np.zeros((height, width, 6), dtype=np.uint8)
 
-# Apply the one-hot encoding
-for i in range(height):
-    for j in range(width):
-        one_hot_encoded[i, j] = one_hot_map[label_array[i, j]]
+# # Apply the one-hot encoding
+# for i in range(height):
+#     for j in range(width):
+#         one_hot_encoded[i, j] = one_hot_map[label_array[i, j]]
 
-# If you need to save the result as an image, you can save each channel as a separate image or combine them as needed
-# Example: Saving one of the channels
-# output_image = Image.fromarray(one_hot_encoded[:, :, 0])
-# output_image.save('one_hot_encoded_channel_0.tif')
+# # If you need to save the result as an image, you can save each channel as a separate image or combine them as needed
+# # Example: Saving one of the channels
+# # output_image = Image.fromarray(one_hot_encoded[:, :, 0])
+# # output_image.save('one_hot_encoded_channel_0.tif')
 
-# Alternatively, you can save the entire array using np.save to preserve all channels
-np.save('one_hot_encoded.npy', one_hot_encoded)
+# # Alternatively, you can save the entire array using np.save to preserve all channels
+# np.save('one_hot_encoded.npy', one_hot_encoded)
 
-print("Done!")
+# print("Done!")

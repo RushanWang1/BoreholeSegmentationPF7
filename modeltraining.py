@@ -51,9 +51,17 @@ one_hot_map = {
     7: [0, 0, 1, 0, 0, 1],
 }
 
+
 # load dataset
-train_ds = dataset["train"]
-test_ds = dataset["validation"]
+# trainarea_ds = dataset["train"]
+# train_ds = dataset["train"].select(train_idxs)
+# test_ds = dataset["train"].select(test_idxs)
+
+train_test_split = dataset['train'].train_test_split(test_size=0.05, seed=42)
+
+# Extracting the split datasets
+train_ds = train_test_split['train']
+test_ds = train_test_split['test']
 
 # Image processor and augmentation
 processor = SegformerImageProcessor(do_rescale= True, do_reduce_labels = False)
@@ -65,7 +73,9 @@ augmentation_pipeline = A.Compose([
     A.VerticalFlip(p=0.5),
     A.Rotate(limit=30, p=0.5),
     A.RandomCrop(width=512, height=512, p=0.5),
-    A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, p=0.5),    
+    A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, p=0.5),   
+    A.CLAHE(p=0.3),
+    A.GaussianBlur(blur_limit=(3, 7), p=0.1), 
     # A.GaussianBlur(blur_limit=(3, 7), p=0.1),
     # A.ElasticTransform(alpha=1, sigma=50, alpha_affine=50, p=0.2),
     # A.GridDistortion(p=0.5),
@@ -197,7 +207,7 @@ lr = 0.0001
 batch_size = 24
 
 training_args = TrainingArguments(
-    "Segformer-nowrs-ep500-batch24-augment-splitarea-multiscale", 
+    "model_ckpt/segformer_model/nowrs-ep500-batch24-512-1409", 
     learning_rate=lr,
     dataloader_num_workers= 4,
     num_train_epochs=epochs,
@@ -209,7 +219,7 @@ training_args = TrainingArguments(
     save_strategy="steps",
     save_steps=20,
     eval_steps=20,
-    logging_dir = 'Segformer-nowrs-ep500-batch24-augment-splitarea-multiscale-log',
+    logging_dir = 'model_ckpt/segformer_model/nowrs-ep500-batch24-512-1409-log',
     logging_steps=1,
     eval_accumulation_steps=5,
     load_best_model_at_end=True,
@@ -240,8 +250,8 @@ class CustomTrainer(Trainer):
         logits = outputs.get('logits')
         # compute custom loss
         # loss_fct = nn.BCEWithLogitsLoss(pos_weight=weights).to(device)
-        loss_fct = nn.CrossEntropyLoss(weight=torch.tensor(weights)).to(device) # for integer label
-        # loss_fct = FocalLoss(alpha=torch.tensor(alpha).to(device), gamma=2, reduction='sum').to(device)  
+        # loss_fct = nn.CrossEntropyLoss(weight=torch.tensor(weights)).to(device) # for integer label
+        loss_fct = FocalLoss(alpha=torch.tensor(alpha).to(device), gamma=2, reduction='sum').to(device)  
         logits_tensor = nn.functional.interpolate(
             logits,
             size=labels.shape[-2:],
@@ -342,7 +352,7 @@ class LogLossCallback(TrainerCallback):
             self.writer.add_scalar("Validation Loss", val_loss, epoch)
             
 # print(dir(train_ds))
-writer = SummaryWriter(log_dir='Segformer-nowrs-ep500-batch24-augment-splitarea-multiscale-v2-evallog')
+writer = SummaryWriter(log_dir='model_ckpt/segformer_model/nowrs-ep500-batch24-augment-512-evallog')
 # Trainer => CustomTrainer
 trainer = CustomTrainer(
     model=model,

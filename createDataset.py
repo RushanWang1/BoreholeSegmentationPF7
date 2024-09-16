@@ -35,27 +35,35 @@ total_files = 5103
 # train_indices = range()
 
 # Generate file paths for training and testing sets
-train_size = 4158
-test_size = 945
+
+single_scale_training = True
+
+train_size = 7369
+test_size = 469
 image_size = 512
-# image_paths_train = [f'data/train_image_{image_size}/image_{i}.jpg' for i in range(train_size)]
-# label_paths_train = [f'data/train_annotation_faultzone_{image_size}/annotation_{i}.png' for i in range(train_size)]
-# image_paths_validation = [f'data/test_image_{image_size}/image_{i}.jpg' for i in range(test_size)]
-# label_paths_validation = [f'data/test_annotation_faultzone_{image_size}/annotation_{i}.png' for i in range(test_size)]
 
-image_paths_train_512 = [f'data/train_image_512/image_{i}.jpg' for i in range(4158)]
-label_paths_train_512 = [f'data/train_annotation_512/annotation_{i}.png' for i in range(4158)]
-image_paths_train_1024 = [f'data/train_image_1024/image_{i}.jpg' for i in range(1034)]
-label_paths_train_1024 = [f'data/train_annotation_1024/annotation_{i}.png' for i in range(1034)]
-image_paths_train_2048 = [f'data/train_image_2048/image_{i}.jpg' for i in range(235)]
-label_paths_train_2048 = [f'data/train_annotation_2048/annotation_{i}.png' for i in range(235)]
-image_paths_train_4096 = [f'data/train_image_4096/image_{i}.jpg' for i in range(46)]
-label_paths_train_4096 = [f'data/train_annotation_4096/annotation_{i}.png' for i in range(46)]
-image_paths_train = image_paths_train_512+image_paths_train_1024+image_paths_train_2048+image_paths_train_4096
-label_paths_train = label_paths_train_512+label_paths_train_1024+label_paths_train_2048+label_paths_train_4096
+if single_scale_training:
+    image_paths_train = [f'data/210202_230816/train_image_{image_size}/image_{i}.jpg' for i in range(train_size)]
+    label_paths_train = [f'data/210202_230816/train_annotation_{image_size}/annotation_{i}.png' for i in range(train_size)]
+    image_paths_validation = [f'data/210202_230816/test_image_{image_size}/image_{i}.jpg' for i in range(test_size)]
+    label_paths_validation = [f'data/210202_230816/test_annotation_{image_size}/annotation_{i}.png' for i in range(test_size)]
 
-image_paths_validation = [f'data/test_image_{image_size}/image_{i}.jpg' for i in range(test_size)]
-label_paths_validation = [f'data/test_annotation_{image_size}/annotation_{i}.png' for i in range(test_size)]
+
+multi_scale_training = False
+if multi_scale_training:
+    image_paths_train_512 = [f'data/train_image_512/image_{i}.jpg' for i in range(4158)]
+    label_paths_train_512 = [f'data/train_annotation_512/annotation_{i}.png' for i in range(4158)]
+    image_paths_train_1024 = [f'data/train_image_1024/image_{i}.jpg' for i in range(1034)]
+    label_paths_train_1024 = [f'data/train_annotation_1024/annotation_{i}.png' for i in range(1034)]
+    image_paths_train_2048 = [f'data/train_image_2048/image_{i}.jpg' for i in range(235)]
+    label_paths_train_2048 = [f'data/train_annotation_2048/annotation_{i}.png' for i in range(235)]
+    image_paths_train_4096 = [f'data/train_image_4096/image_{i}.jpg' for i in range(46)]
+    label_paths_train_4096 = [f'data/train_annotation_4096/annotation_{i}.png' for i in range(46)]
+    image_paths_train = image_paths_train_512+image_paths_train_1024+image_paths_train_2048+image_paths_train_4096
+    label_paths_train = label_paths_train_512+label_paths_train_1024+label_paths_train_2048+label_paths_train_4096
+
+    image_paths_validation = [f'data/test_image_{image_size}/image_{i}.jpg' for i in range(test_size)]
+    label_paths_validation = [f'data/test_annotation_{image_size}/annotation_{i}.png' for i in range(test_size)]
 
 # If you need to see the lists or do something with them, you can print them out or proceed with your logic
 # print("Training image paths:", image_paths_train)

@@ -12,17 +12,18 @@ from torch.optim import lr_scheduler
 import segmentation_models_pytorch as smp
 import pytorch_lightning as pl
 from FocalLoss import FocalLoss
+from lightning.pytorch import loggers as pl_loggers
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
-DATA_DIR = 'data/'
+DATA_DIR = 'data/210202_230816'
 
 x_train_dir = os.path.join(DATA_DIR, 'train_image_512')
 y_train_dir = os.path.join(DATA_DIR, 'train_annotation_512')
 
-x_valid_dir = os.path.join(DATA_DIR, 'validation_image_512')
-y_valid_dir = os.path.join(DATA_DIR, 'validation_annotation_512')
+# x_valid_dir = os.path.join(DATA_DIR, 'validation_image_512')
+# y_valid_dir = os.path.join(DATA_DIR, 'validation_annotation_512')
 
 x_test_dir = os.path.join(DATA_DIR, 'test_image_512')
 y_test_dir = os.path.join(DATA_DIR, 'test_annotation_512')
@@ -148,19 +149,22 @@ augmented_dataset = Dataset(
 CLASSES = ['intactwall', 'tectonictrace', 'inducedcrack', 'faultgauge', 'breakout', 
                'faultzone']
 
-train_dataset = Dataset(
+train_dataset_all = Dataset(
     x_train_dir, 
     y_train_dir, 
     augmentation=get_training_augmentation(), 
     classes=CLASSES,
 )
+train_size = int(0.95 * len(train_dataset_all))
+valid_size = len(train_dataset_all) - train_size
+train_dataset, valid_dataset = torch.utils.data.random_split(train_dataset_all, [train_size, valid_size])
 
-valid_dataset = Dataset(
-    x_valid_dir, 
-    y_valid_dir, 
-    augmentation=get_validation_augmentation(), 
-    classes=CLASSES,
-)
+# valid_dataset = Dataset(
+#     x_valid_dir, 
+#     y_valid_dir, 
+#     augmentation=get_validation_augmentation(), 
+#     classes=CLASSES,
+# )
 
 test_dataset = Dataset(
     x_test_dir,
@@ -275,9 +279,12 @@ class UnetModel(pl.LightningModule):
         # with "empty" images (images without target class) a large gap could be observed. 
         # Empty images influence a lot on per_image_iou and much less on dataset_iou.
         dataset_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro")
+        # per_class_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="none")
+        # per_class_metrics = {f"{stage}_iou_class_{i}": iou for i, iou in enumerate(per_class_iou)}
         metrics = {
             f"{stage}_per_image_iou": per_image_iou,
             f"{stage}_dataset_iou": dataset_iou,
+            # **per_class_metrics,
         }
         
         self.log_dict(metrics, prog_bar=True)
@@ -328,9 +335,12 @@ class UnetModel(pl.LightningModule):
         }
         return
 
-# model = UnetModel("Unet", "resnet34", in_channels=3, out_classes=OUT_CLASSES)
+model = UnetModel("Unet", "resnet34", in_channels=3, out_classes=OUT_CLASSES)
 
-# trainer = pl.Trainer(max_epochs=EPOCHS, log_every_n_steps=1)
+tb_logger = pl_loggers.TensorBoardLogger(save_dir="model_ckpt/unet_model/logs/")
+# trainer = Trainer(logger=tb_logger)
+
+# trainer = pl.Trainer(max_epochs=EPOCHS, log_every_n_steps=1, logger=tb_logger)
 
 # trainer.fit(
 #     model.to(device), 
@@ -342,13 +352,13 @@ class UnetModel(pl.LightningModule):
 # print(valid_metrics)
 
 # # Save the entire model
-# model_path = 'unet_ep500_focalloss.ckpt'
+# model_path = 'model_ckpt/unet_model/unet_ep500_focalloss_1309.ckpt'
 # trainer.save_checkpoint(model_path)
 
-# model.load_from_checkpoint(model_path)
-# checkpoint = torch.load(model_path)
-# model.load_state_dict(checkpoint['model'])
-# optimizer.load_state_dict(checkpoint['optimizer'])
+# # model.load_from_checkpoint(model_path)
+# # checkpoint = torch.load(model_path)
+# # model.load_state_dict(checkpoint['model'])
+# # optimizer.load_state_dict(checkpoint['optimizer'])
 
 # test_metrics = trainer.test(model, dataloaders=test_loader, verbose=False)
 # print(test_metrics)
@@ -371,3 +381,34 @@ class UnetModel(pl.LightningModule):
 # y_hat = model_ckpt(torch.from_numpy(image_test))
 # print("Done!")
 
+def mIOU(prediction, label, num_classes):
+    # prediction= prediction.max(1)[1].float().cpu().numpy()
+    # label = label.float().cpu().numpy() 
+    
+    iou_list = list()
+    present_iou_list = list()
+    # all_iou_list = list()
+
+    for sem_class in range(num_classes):
+        # print(sem_class)
+        pred_inds = (prediction == sem_class)
+        target_inds = (label == sem_class)
+        if target_inds.sum().item() == 0:
+            iou_now = float('nan')
+            # iou_now = 0
+            # all_iou_list
+        else:
+            # print(sem_class)
+            intersection_now = (pred_inds[target_inds]).sum().item()
+            union_now = pred_inds.sum().item() + target_inds.sum().item() - intersection_now
+            iou_now = float(intersection_now) / float(union_now)
+            present_iou_list.append(iou_now)
+        iou_list.append(iou_now)
+    miou = np.mean(present_iou_list)
+    return miou, iou_list
+
+# def main():
+# # display some lines
+
+# if __name__ == "__main__": 
+#     main()
