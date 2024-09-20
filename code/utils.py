@@ -74,7 +74,7 @@ class UnetModel(pl.LightningModule):
             self.loss_fn = FocalLoss(
                 alpha=class_weights_tensor, 
                 gamma=2, 
-                reduction='mean' # Changed to mean: the average of all element-wise losses is returned, so the loss scales independently of the batch size. When using 'sum' the total loss ncreases proportionally with the number of pixels.
+                reduction='mean' # Changed to mean: the average of all element-wise losses is returned, so the loss scales independently of the batch size. When using 'sum' the total loss increases proportionally with the number of pixels.
             ).to(device) 
         elif loss_function == "CrossEntropy":
             self.loss_fn = torch.nn.CrossEntropyLoss(
@@ -142,7 +142,7 @@ class UnetModel(pl.LightningModule):
         dataset_iou = smp.metrics.iou_score(tp, fp, fn, tn, reduction="micro")
         mean_iou = dataset_iou.mean().item() 
         metrics = {
-            f"{stage}_mean_iou": round(mean_iou*100, 2),
+            f"{stage}_mean_iou": round(mean_iou, 3),
         }
         self.log_dict(metrics, prog_bar=True)
     
@@ -158,14 +158,14 @@ class UnetModel(pl.LightningModule):
         iou_per_class = smp.metrics.iou_score(tp, fp, fn, tn, reduction="none").mean(dim=0).tolist()
         
         metrics = {
-            "test_per_image_iou": round(per_image_iou * 100, 2),
-            "test_mean_iou": round(mean_iou * 100, 2),
-            "test_iou_intactwall": round(iou_per_class[0] * 100, 2),
-            "test_iou_tectonictrace": round(iou_per_class[1] * 100, 2),
-            "test_iou_inducedcrack": round(iou_per_class[2] * 100, 2),
-            "test_iou_faultgauge": round(iou_per_class[3] * 100, 2),
-            "test_iou_breakout": round(iou_per_class[4] * 100, 2),
-            "test_iou_faultzone": round(iou_per_class[5] * 100, 2),
+            "test_per_image_iou": round(per_image_iou, 3),
+            "test_mean_iou": round(mean_iou, 3),
+            "test_iou_intactwall": round(iou_per_class[0], 3),
+            "test_iou_tectonictrace": round(iou_per_class[1], 3),
+            "test_iou_inducedcrack": round(iou_per_class[2], 3),
+            "test_iou_faultgauge": round(iou_per_class[3], 3),
+            "test_iou_breakout": round(iou_per_class[4], 3),
+            "test_iou_faultzone": round(iou_per_class[5], 3),
         }
         return metrics
 
@@ -207,7 +207,7 @@ class UnetModel(pl.LightningModule):
         return test_metrics
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.initial_learning_rate)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.initial_learning_rate) # TODO try AdamW
         scheduler = lr_scheduler.CosineAnnealingLR(
             optimizer, 
             T_max=self.t_max, 
