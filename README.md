@@ -43,10 +43,6 @@ This script loads a pre-trained model checkpoint and tests it on a full-sized bo
 - Calculating performance metrics on the entire borehole image to evaluate model accuracy.
 - Creates files that can be used to visualize the prediction
 
-```segformer_training.py```
-(In Progress)
-This script is intended for training a SegFormer model, but it is not yet complete.
-
 ```visualize.ipynb```
 A Jupyter notebook designed for visualizing both the borehole images and their corresponding annotations.
 
