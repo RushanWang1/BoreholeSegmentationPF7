@@ -157,11 +157,11 @@ test_ds = test_ds.shuffle(seed=42)
 print(train_ds, test_ds)
 
 # Fine-tune a SegFormer model
-pretrained_model_name = "nvidia/mit-b0" 
-# pretrained_model_name = "/home/wangrush/code/FineTune/Segformer-ep800-batch20-augmentall-splitarea-multiscale/checkpoint-99400"
+# pretrained_model_name = "nvidia/mit-b0" 
+pretrained_model_name = '/home/wangrush/code/FineTune/model_ckpt/segformer_model/nowrs-ep500-batch24-512-1409/checkpoint-146000'
 model = SegformerForSemanticSegmentation.from_pretrained(
     pretrained_model_name,
-    # local_files_only=True,
+    local_files_only=True,
     id2label=id2label,
     label2id=label2id
 )
@@ -204,10 +204,10 @@ alpha = [w / sum_weights for w in weights]
 # torch.cuda.set_device(0)
 epochs = 500
 lr = 0.0001
-batch_size = 24
+batch_size = 20
 
 training_args = TrainingArguments(
-    "model_ckpt/segformer_model/nowrs-ep500-batch24-512-1409", 
+    f"model_ckpt/segformer_model/nowrs-ep{epochs}-batch{batch_size}-multiscale-1709", 
     learning_rate=lr,
     dataloader_num_workers= 4,
     num_train_epochs=epochs,
@@ -219,7 +219,7 @@ training_args = TrainingArguments(
     save_strategy="steps",
     save_steps=20,
     eval_steps=20,
-    logging_dir = 'model_ckpt/segformer_model/nowrs-ep500-batch24-512-1409-log',
+    logging_dir = f'model_ckpt/segformer_model/nowrs-ep{epochs}-batch{batch_size}-multiscale-1709-log',
     logging_steps=1,
     eval_accumulation_steps=5,
     load_best_model_at_end=True,
@@ -352,7 +352,7 @@ class LogLossCallback(TrainerCallback):
             self.writer.add_scalar("Validation Loss", val_loss, epoch)
             
 # print(dir(train_ds))
-writer = SummaryWriter(log_dir='model_ckpt/segformer_model/nowrs-ep500-batch24-augment-512-evallog')
+writer = SummaryWriter(log_dir=f'model_ckpt/segformer_model/nowrs-ep{epochs}-batch{batch_size}-augment-multiscale-evallog')
 # Trainer => CustomTrainer
 trainer = CustomTrainer(
     model=model,

@@ -19,14 +19,14 @@ print(device)
 
 DATA_DIR = 'data/210202_230816'
 
-x_train_dir = os.path.join(DATA_DIR, 'train_image_512')
-y_train_dir = os.path.join(DATA_DIR, 'train_annotation_512')
+x_train_dir = os.path.join(DATA_DIR, 'train_image_1024')
+y_train_dir = os.path.join(DATA_DIR, 'train_annotation_1024')
 
 # x_valid_dir = os.path.join(DATA_DIR, 'validation_image_512')
 # y_valid_dir = os.path.join(DATA_DIR, 'validation_annotation_512')
 
-x_test_dir = os.path.join(DATA_DIR, 'test_image_512')
-y_test_dir = os.path.join(DATA_DIR, 'test_annotation_512')
+x_test_dir = os.path.join(DATA_DIR, 'test_image_1024')
+y_test_dir = os.path.join(DATA_DIR, 'test_annotation_1024')
 
 class Dataset(BaseDataset):
     """Read images, apply augmentation transformations.
@@ -107,7 +107,7 @@ def visualize(**images):
 dataset = Dataset(x_train_dir, y_train_dir,classes = ['intactwall', 'tectonictrace', 'inducedcrack', 'faultgauge', 'breakout', 
                'faultzone'])
 # get some sample
-image, mask = dataset[1]
+# image, mask = dataset[1]
 # visualize(image=image, mask=mask.squeeze(),)
 
 # visualize(image=image, mask=mask.argmax(axis = 0))

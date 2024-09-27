@@ -6,65 +6,70 @@ import matplotlib.image as image
 import matplotlib.pyplot as plt
 from PIL import Image
 
+############ THIS PART OF THE CODE IS FOR MERGING DIFFERENT LABEL FILE INTO SINGLE LAYER OF TIFF FILE ############ 
 # read breakout and faultzone label
-# with rasterio.open("data/temporal_compare_data/201113_label/breakout_faultzone.tif") as img1:
-#     # print(img1.shape)
-#     # window = Window(0,0,4000,4000)
-#     data_breakout = img1.read()
-#     # data_breakout[data_breakout == 0] = 99
-#     # data_breakout[data_breakout == 1] = 4
-#     # data_breakout[data_breakout == 2] = 5
-#     data_breakout[data_breakout == 1] = 4
-#     data_breakout[data_breakout == 2] = 5
-#     values1 = np.unique(data_breakout)
-#     print(values1)
-#     # show(data)
-
-with rasterio.open("data/temporal_compare_data/201113_label/201113_label.tif") as img3:
+with rasterio.open("data/refined/210202_fullyfailedbreakout.tif") as img1:
     # print(img1.shape)
     # window = Window(0,0,4000,4000)
+    data_breakout = img1.read()
+    # data_breakout[data_breakout == 0] = 99
+    # data_breakout[data_breakout == 1] = 4
+    # data_breakout[data_breakout == 2] = 5
+    # data_breakout[data_breakout == 1] = 4
+    # data_breakout[data_breakout == 2] = 5
+    # values1 = np.unique(data_breakout)
+    print(np.unique(data_breakout))
+    # show(data)
+
+with rasterio.open("data/refined/alllabel_210202_new.tif") as img3:
+    # print(img1.shape)
+    # window = Window(0,0,4000,4000)
+    profile = img3.profile
     allLabel = img3.read()
     # data_cracks[data_cracks == 0] = 99
     # data_breakout[data_breakout == 1] = 4
     # data_breakout[data_breakout == 2] = 5
-    # data_breakout[data_breakout == 4] = 6
+    allLabel[allLabel == 4] = 0
     values1 = np.unique(allLabel)
     print(values1)
 
 # read cracks label  
-with rasterio.open("data/temporal_compare_data/201113_label/tectonic_desiccate.tif") as img2:
-    # print(img2.shape)
-    # window = Window(0,0,4000,4000)
-    profile = img2.profile
-    data_cracks = img2.read()
-    # data_cracks[data_cracks == 3] = 99
-    values2 = np.unique(data_cracks)
-    print(values2)
+# with rasterio.open("data/temporal_compare_data/201113_label/tectonic_desiccate.tif") as img2:
+#     # print(img2.shape)
+#     # window = Window(0,0,4000,4000)
+#     profile = img2.profile
+#     data_cracks = img2.read()
+#     # data_cracks[data_cracks == 3] = 99
+#     values2 = np.unique(data_cracks)
+#     print(values2)
 
 
 # merge label to get the overall groundtruth
 # allfaultzone = np.maximum(data_breakout,data_cracks)
 # allLabel_crack = np.maximum(data_cracks, data_faultgouge)
-allLabel[data_cracks == 1] = 1
-allLabel[data_cracks == 2] = 2
-# allLabel = np.maximum(allLabel_crack, data_breakout)
+# allLabel[data_cracks == 1] = 1
+# allLabel[data_cracks == 2] = 2
+allLabel = np.maximum(data_breakout, allLabel)
 # allLabel[allLabel==99]=0
 print(allLabel[0].shape)
 print(np.unique(allLabel))
 # show(allLabel, cmap='Pastel1')
-with rasterio.open('data/temporal_compare_data/201113_label/new_label.tif', 'w', **profile) as dst:
+with rasterio.open('data/refined/alllabel_210202_fullybreak.tif', 'w', **profile) as dst:
     dst.write(allLabel[0].astype(rasterio.uint8), 1)
 
 print("Finish writing new label!")
 
+
+############ THIS PART OF THE CODE IS FOR CROPPING THE LARGE IMAGE OR LABEL INTO SMALLER PATCH SIZE ############ 
+
 # Cropping both image and label into 1024x1024 size, creating dataset
-height = 512
-width = 512
-col = 0
-row = 0
-n=0
-x = 0
-y = 0
+# height = 512
+# width = 512
+# col = 0
+# row = 0
+# n=0
+# x = 0
+# y = 0
 # # Over lap croping, 512*512 image size, interval 256
 # with rasterio.open("data/refined/alllabel_210202_new.tif") as img:
 #     # print(img.shape)  
@@ -97,7 +102,9 @@ y = 0
 ####### Build temporal compare dataset
 # width = 512
 # height = 512
-# with rasterio.open("data/temporal_compare_data/230816_image.tif") as img:
+# n = 0
+# date = 220621
+# with rasterio.open(f"data/temporal_compare_data/new_image/{date}_cropped_image.tif") as img:
 #     # print(img.shape)  
 #     col_num = img.width//(width - 20)+1
 #     row_num = img.height//(height - 20)+1
@@ -116,26 +123,30 @@ y = 0
 #             print(int(col),int(row))
 #             # radius = rescale_radius[0,int(row):int(row)+512, int(col):int(col)+512]
 #             # image.imsave(f'FineTune/data/image/image_{n}.png', data_gt[0])
-#             image.imsave(f'data/temporal_compare_data/230816_image_512_overlap_20/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
+#             image.imsave(f'data/temporal_compare_data/new_image/{date}_image_{width}_overlap20/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
 #             n+=1
 
 ###### build training and testing dataset of different crop size ######
-width = 512
-height = 512
-# with rasterio.open("data/refined/train_croppedimage.tif") as img:
-#     # print(img.shape)  
+# width = 512
+# height = 512
+# n = 0
+# with rasterio.open("data/temporal_compare_data/new_image/210720_cropped_image.tif") as img:
+#     print(img.shape)  
 #     image_width = img.width
 #     image_height = img.height
-#     row_num = int(image_height/(height/2))
-#     col_num = int(image_width/(width/2))
+#     image_offset = height/2
+#     # col_num = img.width//(width - 20)+1
+#     # row_num = img.height//(height - 20)+1
+#     row_num = int(image_height/image_offset)
+#     col_num = int(image_width/image_offset)
 #     for y in range(row_num):
 #         for x in range (col_num):
 #             if x <(col_num-1):
-#                 col = x*(width/2)                
+#                 col = x*image_offset               
 #             elif x==(col_num-1):
 #                 col = img.width - width                 
 #             if y<(row_num-1):
-#                 row = y*(height/2)
+#                 row = y*image_offset
 #             elif y==(row_num-1):
 #                 row = img.height - height
 #             currentwindow = Window(col,row,width,height)
@@ -143,7 +154,7 @@ height = 512
 #             print(int(col),int(row))
 #             # radius = rescale_radius[0,int(row):int(row)+512, int(col):int(col)+512]
 #             # image.imsave(f'FineTune/data/image/image_{n}.png', data_gt[0])
-#             image.imsave(f'data/train_image_{width}/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
+#             image.imsave(f'data/temporal_compare_data/new_image/210720_image_{width}/image_{n}.jpg', np.stack((data_gt[0],data_gt[1],data_gt[2]),axis = 2))
 #             n+=1
 # n = 0
 
